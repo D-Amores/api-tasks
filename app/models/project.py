@@ -1,13 +1,14 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, String, func
+from sqlalchemy import DateTime, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.task import Task
+    from app.models.user import User
 
 
 class Project(Base):
@@ -22,3 +23,7 @@ class Project(Base):
     tasks: Mapped[list["Task"]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    owner: Mapped["User"] = relationship(back_populates="projects")
