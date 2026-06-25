@@ -1,3 +1,4 @@
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.project import Project
@@ -8,8 +9,8 @@ class ProjectRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def create(self, data: ProjectCreate) -> Project:
-        project = Project(**data.model_dump())
+    def create(self, user_id: int, data: ProjectCreate) -> Project:
+        project = Project(**data.model_dump(), user_id=user_id)
         self.db.add(project)
         self.db.commit()
         self.db.refresh(project)
@@ -18,8 +19,9 @@ class ProjectRepository:
     def get(self, project_id: int) -> Project | None:
         return self.db.get(Project, project_id)
 
-    def get_all(self) -> list[Project]:
-        return list(self.db.query(Project).all())
+    def get_all(self, user_id: int) -> list[Project]:
+        stmt = select(Project).where(Project.user_id == user_id)
+        return list(self.db.scalars(stmt).all())
 
     def update(self, project: Project, data: ProjectUpdate) -> Project:
         update_data = data.model_dump(exclude_unset=True)
