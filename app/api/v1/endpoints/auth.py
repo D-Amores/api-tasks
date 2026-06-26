@@ -22,13 +22,7 @@ def register(
     data: UserCreate,
     service: UserService = Depends(get_user_service),
 ):
-    user = service.register(data)
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Email already registered",
-        )
-    return user
+    return service.register(data)
 
 
 @router.post("/login", response_model=Token)

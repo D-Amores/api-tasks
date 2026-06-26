@@ -1,5 +1,4 @@
-from sqlalchemy.sql.base import _NoneName
-
+from app.core.exceptions import NotFoundError
 from app.models.task import Task
 from app.repositories.project import ProjectRepository
 from app.repositories.task import TaskRepository
@@ -17,44 +16,34 @@ class TaskService:
         project = self.project_repository.get(project_id)
 
         if project is None or project.user_id != user_id:
-            return None
+            raise NotFoundError("Project not found")
         return project
 
     def create_task(
         self, user_id: int, project_id: int, data: TaskCreate
     ) -> Task | None:
-        if self._owned_project(user_id, project_id) is None:
-            return None
-
+        self._owned_project(user_id, project_id)
         return self.task_repository.create(project_id, data)
 
     def list_tasks(self, user_id: int, project_id: int) -> list[Task] | None:
-        if self._owned_project(user_id, project_id) is None:
-            return None
-
+        self._owned_project(user_id, project_id)
         return self.task_repository.get_by_project(project_id)
 
-    def get_task(self, user_id: int, project_id: int, task_id: int) -> Task | None:
-        if self._owned_project(user_id, project_id) is None:
-            return None
-
+    def get_task(self, user_id: int, project_id: int, task_id: int) -> Task:
+        self._owned_project(user_id, project_id)
         task = self.task_repository.get(task_id)
 
         if task is None or task.project_id != project_id:
-            return None
+            raise NotFoundError("Task not found")
         return task
 
     def update_task(
         self, user_id: int, project_id: int, task_id: int, data: TaskUpdate
     ) -> Task | None:
         task = self.get_task(user_id, project_id, task_id)
-        if task is None:
-            return None
         return self.task_repository.update(task, data)
 
     def delete_task(self, user_id: int, project_id: int, task_id: int) -> bool:
         task = self.get_task(user_id, project_id, task_id)
-        if task is None:
-            return False
         self.task_repository.delete(task)
         return True

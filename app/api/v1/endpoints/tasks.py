@@ -22,13 +22,7 @@ def create_task(
     service: TaskService = Depends(get_task_service),
     current_user: User = Depends(get_current_user),
 ):
-    task = service.create_task(current_user.id, project_id, data)
-    if task is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found",
-        )
-    return task
+    return service.create_task(current_user.id, project_id, data)
 
 
 @router.get("", response_model=list[TaskRead])
@@ -37,13 +31,7 @@ def list_tasks(
     service: TaskService = Depends(get_task_service),
     current_user: User = Depends(get_current_user),
 ):
-    tasks = service.list_tasks(current_user.id, project_id)
-    if tasks is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found",
-        )
-    return tasks
+    return service.list_tasks(current_user.id, project_id)
 
 
 @router.patch("/{task_id}", response_model=TaskRead)
@@ -54,13 +42,7 @@ def update_task(
     service: TaskService = Depends(get_task_service),
     current_user: User = Depends(get_current_user),
 ):
-    task = service.update_task(current_user.id, project_id, task_id, data)
-    if task is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
-    return task
+    return service.update_task(current_user.id, project_id, task_id, data)
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -70,9 +52,4 @@ def delete_task(
     service: TaskService = Depends(get_task_service),
     current_user: User = Depends(get_current_user),
 ):
-    deleted = service.delete_task(current_user.id, project_id, task_id)
-    if not deleted:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
+    return service.delete_task(current_user.id, project_id, task_id)
