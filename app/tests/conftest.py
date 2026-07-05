@@ -19,13 +19,14 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 
 @pytest.fixture
 def db_session():
-    Base.metadata.create_all(bind=engine)
+    tables = [t for t in Base.metadata.sorted_tables if t.name != "task_embeddings"]
+    Base.metadata.create_all(bind=engine, tables=tables)
     session = TestingSessionLocal()
     try:
         yield session
     finally:
         session.close()
-        Base.metadata.drop_all(bind=engine)
+        Base.metadata.drop_all(bind=engine, tables=tables)
 
 
 @pytest.fixture
