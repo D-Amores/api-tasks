@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
@@ -6,6 +6,7 @@ from app.models.user import User
 from app.repositories.project import ProjectRepository
 from app.repositories.task import TaskRepository
 from app.schemas.task import TaskCreate, TaskRead, TaskUpdate
+from app.services.indexing import index_task
 from app.services.task import TaskService
 
 router = APIRouter(prefix="/projects/{project_id}/tasks", tags=["tasks"])
@@ -19,10 +20,13 @@ def get_task_service(db: Session = Depends(get_db)) -> TaskService:
 def create_task(
     project_id: int,
     data: TaskCreate,
+    background_tasks: BackgroundTasks,
     service: TaskService = Depends(get_task_service),
     current_user: User = Depends(get_current_user),
 ):
-    return service.create_task(current_user.id, project_id, data)
+    task = service.create_task(current_user.id, project_id, data)
+    background_tasks.add_task(index_task, task.id)
+    return task
 
 
 @router.get("", response_model=list[TaskRead])
@@ -39,10 +43,13 @@ def update_task(
     project_id: int,
     task_id: int,
     data: TaskUpdate,
+    background_tasks: BackgroundTasks,
     service: TaskService = Depends(get_task_service),
     current_user: User = Depends(get_current_user),
 ):
-    return service.update_task(current_user.id, project_id, task_id, data)
+    task = service.update_task(current_user.id, project_id, task_id, data)
+    background_tasks.add_task(index_task, task.id)
+    return task
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
