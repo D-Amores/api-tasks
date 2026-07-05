@@ -14,5 +14,7 @@ class Settings(BaseSettings):
     openai_api_key: str
     deepseek_api_key: str
 
+    deepseek_model: str = "deepseek-v4-flash"
+
 
 settings = Settings()  # type: ignore
