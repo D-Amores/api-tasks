@@ -16,5 +16,7 @@ class Settings(BaseSettings):
 
     deepseek_model: str = "deepseek-v4-flash"
 
+    langgraph_strict_msgpack: bool = True
+
 
 settings = Settings()  # type: ignore
