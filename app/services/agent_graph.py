@@ -1,16 +1,19 @@
-import sqlite3
+import asyncio
 from pathlib import Path
+from typing import Any, cast
 
+import aiosqlite
 from langchain_core.messages import SystemMessage
 from langchain_deepseek import ChatDeepSeek
-from langgraph.checkpoint.sqlite import SqliteSaver
+from langchain_mcp_adapters.client import MultiServerMCPClient
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph import START, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
 from typing_extensions import Annotated, TypedDict
 
 from app.core.config import settings
-from app.services.agent_tools import build_agent_tools
+from app.core.security import create_acces_token
 
 SYSTEM_PROMPT = (
     "You are a helpful task-management assistant. You can list, create, "
@@ -21,8 +24,9 @@ SYSTEM_PROMPT = (
 )
 
 DB_PATH = Path("agent_memory.db")
-_conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
-_checkpointer = SqliteSaver(_conn)
+
+_checkpointer: AsyncSqliteSaver | None = None
+_checkpointer_lock = asyncio.Lock()
 
 _llm = ChatDeepSeek(
     model=settings.deepseek_model,
@@ -36,7 +40,17 @@ class AgentState(TypedDict):
     messages: Annotated[list, add_messages]
 
 
-def build_graph(tools):
+async def _get_checkpointer() -> AsyncSqliteSaver:
+    global _checkpointer
+    if _checkpointer is None:
+        async with _checkpointer_lock:
+            if _checkpointer is None:
+                conn = await aiosqlite.connect(str(DB_PATH))
+                _checkpointer = AsyncSqliteSaver(conn)
+    return _checkpointer
+
+
+def _build_graph(tools, checkpointer: AsyncSqliteSaver):
     llm_with_tools = _llm.bind_tools(tools)
 
     def call_model(state: AgentState) -> dict:
@@ -49,14 +63,26 @@ def build_graph(tools):
     graph_builder = StateGraph(AgentState)
     graph_builder.add_node("agent", call_model)
     graph_builder.add_node("tools", ToolNode(tools))
-
     graph_builder.add_edge(START, "agent")
     graph_builder.add_conditional_edges("agent", tools_condition)
     graph_builder.add_edge("tools", "agent")
+    return graph_builder.compile(checkpointer=checkpointer)
 
-    return graph_builder.compile(checkpointer=_checkpointer)
 
+async def get_agent(user_email: str):
+    internal_token = create_acces_token(subject=user_email)
 
-def get_agent(db, user_id: int):
-    tools = build_agent_tools(db, user_id)
-    return build_graph(tools)
+    connections = cast(
+        dict[str, Any],
+        {
+            "tasks": {
+                "transport": "http",
+                "url": "http://localhost:8001/mcp",
+                "headers": {"Authorization": f"Bearer {internal_token}"},
+            }
+        },
+    )
+    client = MultiServerMCPClient(connections)
+    tools = await client.get_tools()
+    checkpointer = await _get_checkpointer()
+    return _build_graph(tools, checkpointer)
