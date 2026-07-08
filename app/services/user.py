@@ -18,7 +18,7 @@ class UserService:
     def authenticate(self, email: str, password: str) -> User | None:
         user = self.repository.get_by_email(email)
         if user is None:
-            raise ConflictError("User not found or invalid password")
+            return None
         if not verify_password(password, user.hashed_password):
-            raise ConflictError("User not found or invalid password")
+            return None
         return user

@@ -1,4 +1,7 @@
 import logging
+import os
+
+os.environ.setdefault("LANGGRAPH_STRICT_MSGPACK", "true")
 import time
 
 from fastapi import FastAPI, Request
