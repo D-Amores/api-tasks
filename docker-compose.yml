@@ -16,6 +16,21 @@ services:
       timeout: 5s
       retries: 5
 
+  mcp:
+    build: .
+    container_name: api-tasks-mcp
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    ports:
+      - "8001:8001"
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: uv run python -m app.mcp_server
+
   api:
     build: .
     container_name: api-tasks-api
@@ -23,12 +38,14 @@ services:
       - .env
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-    ports:
-      - "8000:8000"
+      MCP_SERVER_URL: http://localhost:8001/mcp
     depends_on:
       db:
         condition: service_healthy
+      mcp:
+        condition: service_started
     command: sh -c "alembic upgrade head && fastapi run app/main.py --host 0.0.0.0 --port 8000"
+    network_mode: "service:mcp"
 
 volumes:
   postgres_data:

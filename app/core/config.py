@@ -18,5 +18,7 @@ class Settings(BaseSettings):
 
     langgraph_strict_msgpack: bool = True
 
+    mcp_server_url: str = "http://localhost:8001/mcp"
+
 
 settings = Settings()  # type: ignore

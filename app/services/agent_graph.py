@@ -77,7 +77,7 @@ async def get_agent(user_email: str):
         {
             "tasks": {
                 "transport": "http",
-                "url": "http://localhost:8001/mcp",
+                "url": settings.mcp_server_url,
                 "headers": {"Authorization": f"Bearer {internal_token}"},
             }
         },
