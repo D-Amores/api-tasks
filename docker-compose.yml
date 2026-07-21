@@ -47,5 +47,15 @@ services:
     command: sh -c "alembic upgrade head && fastapi run app/main.py --host 0.0.0.0 --port 8000"
     network_mode: "service:mcp"
 
+  web:
+    build:
+      context: ../../react/tasks-web
+      args:
+        VITE_API_URL: http://localhost:8000/api/v1
+    container_name: api-tasks-web
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
 volumes:
   postgres_data:
