@@ -4,6 +4,8 @@ A production-style task management REST API built as a hands-on learning project
 
 This isn't a tutorial clone. It's a from-scratch build that layers in real-world concerns one at a time: versioned REST resources, SOLID-oriented service/repository layers, JWT authentication with per-user data isolation, background indexing, semantic search, structured LLM output, a memory-persistent LangGraph agent, and a standalone MCP server exposing the same business logic to any MCP-compatible client.
 
+There's a companion React frontend for this API — see [Tasks Web](your-frontend-repo-url).
+
 ## Table of contents
 
 - [Features](#features)
@@ -26,7 +28,7 @@ This isn't a tutorial clone. It's a from-scratch build that layers in real-world
 - JWT authentication (Argon2 password hashing via `pwdlib`, tokens via `PyJWT`)
 - Projects and tasks as nested REST resources, fully isolated per authenticated user
 - Centralized error handling via domain exceptions (`NotFoundError`, `ConflictError`) mapped to HTTP responses
-- Request logging middleware and CORS configured for a React frontend
+- Request logging middleware and CORS configured for the React frontend
 - Alembic migrations for every schema change
 
 **AI layer**
@@ -40,7 +42,7 @@ This isn't a tutorial clone. It's a from-scratch build that layers in real-world
 ## Architecture
 
 ```
-Client (Swagger / future React app)
+Client (React app / Swagger)
         │
         ▼
 ┌────────────────────────────┐        ┌─────────────────────────────┐
@@ -77,7 +79,7 @@ Key idea: the MCP server doesn't duplicate business logic. Its tools call the sa
 | Structured extraction | LangChain + DeepSeek (`deepseek-v4-flash`)                |
 | Agent orchestration   | LangGraph (`StateGraph`, `AsyncSqliteSaver` checkpointer) |
 | Tool protocol         | MCP (`fastmcp`, `langchain-mcp-adapters`)                 |
-| Containerization      | Docker + Docker Compose                                   |
+| Containerization      | Docker + Docker Compose (4 services: db, mcp, api, web)   |
 
 ## Project structure
 
@@ -108,7 +110,7 @@ tests/                         # pytest suite (SQLite in-memory, JWT-isolated)
 **Prerequisites**: [uv](https://docs.astral.sh/uv/), Docker.
 
 ```bash
-git clone <your-repo-url>
+git clone <your-backend-repo-url> api-tasks
 cd api-tasks
 cp .env.example .env   # fill in SECRET_KEY, OPENAI_API_KEY, DEEPSEEK_API_KEY
 uv sync
@@ -127,19 +129,25 @@ uv run python -c "import secrets; print(secrets.token_hex(32))"
 
 ## Running with Docker
 
-Runs the API and Postgres (with `pgvector`) together:
+Runs the full stack — Postgres (with `pgvector`), the MCP server, the API, and the React frontend — as four services with one command:
 
 ```bash
 docker compose up --build
 ```
 
-Migrations run automatically on container start. The API is available at `http://localhost:8000`.
+- API: `http://localhost:8000`
+- Frontend: `http://localhost:3000`
+- MCP server: `http://localhost:8001` (internal; not meant to be browsed directly)
 
-> Note: inside Docker, the API reaches the database at host `db` (the Compose service name), not `localhost` — Compose overrides `DATABASE_URL` accordingly.
+Notes on the setup:
+
+- Migrations run automatically on API container start.
+- The `web` service builds from a sibling directory (`context: ../tasks-web`) — clone both repos as siblings on disk for this to resolve. See the [frontend README](your-frontend-repo-url) for details on that build.
+- **Networking quirk worth knowing**: the `api` container shares the `mcp` container's network namespace (`network_mode: "service:mcp"`) so it can reach the MCP server at `localhost:8001` — which satisfies MCP's built-in DNS-rebinding protection (it only trusts `localhost`/`127.0.0.1` by default). The cleaner alternative — configuring `fastmcp`'s allowed-hosts directly — hit breaking API changes between versions during development; this is the pragmatic workaround, documented here rather than hidden.
 
 ## Running the AI layer
 
-The chat/agent feature requires **two processes** running simultaneously:
+The chat/agent feature requires **two processes** running simultaneously (outside Docker):
 
 ```bash
 # Terminal 1 — MCP server (agent tools)
@@ -196,4 +204,5 @@ All endpoints except `register`, `login`, and `health` require a `Bearer` JWT.
 - No rate limiting on `/auth/login` yet.
 - No refresh tokens — access tokens expire and require re-login.
 - Agent conversation memory can "remember" past tool failures and avoid retrying even after a bug is fixed — worth revisiting with an explicit retry instruction or memory pruning.
-- Planned: React frontend, human-in-the-loop confirmation for destructive agent actions, n8n automation workflows on top of the API.
+- The API↔MCP `network_mode` workaround (see Docker section) is pragmatic rather than the "clean" solution; revisit once `fastmcp`'s transport-security configuration stabilizes across versions.
+- Planned: human-in-the-loop confirmation for destructive agent actions, n8n automation workflows on top of the API.
