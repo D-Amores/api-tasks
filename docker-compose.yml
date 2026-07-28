@@ -49,7 +49,7 @@ services:
 
   web:
     build:
-      context: ../../react/tasks-web
+      context: ../tasks-web
       args:
         VITE_API_URL: http://localhost:8000/api/v1
     container_name: api-tasks-web

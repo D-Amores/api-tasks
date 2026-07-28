@@ -4,7 +4,7 @@ A production-style task management REST API built as a hands-on learning project
 
 This isn't a tutorial clone. It's a from-scratch build that layers in real-world concerns one at a time: versioned REST resources, SOLID-oriented service/repository layers, JWT authentication with per-user data isolation, background indexing, semantic search, structured LLM output, a memory-persistent LangGraph agent, and a standalone MCP server exposing the same business logic to any MCP-compatible client.
 
-There's a companion React frontend for this API — see [Tasks Web](your-frontend-repo-url).
+There's a companion React frontend for this API — see [Tasks Web](https://github.com/D-Amores/tasks-web).
 
 ## Table of contents
 
@@ -110,7 +110,7 @@ tests/                         # pytest suite (SQLite in-memory, JWT-isolated)
 **Prerequisites**: [uv](https://docs.astral.sh/uv/), Docker.
 
 ```bash
-git clone <your-backend-repo-url> api-tasks
+git clone https://github.com/D-Amores/api-tasks.git api-tasks
 cd api-tasks
 cp .env.example .env   # fill in SECRET_KEY, OPENAI_API_KEY, DEEPSEEK_API_KEY
 uv sync
@@ -142,7 +142,7 @@ docker compose up --build
 Notes on the setup:
 
 - Migrations run automatically on API container start.
-- The `web` service builds from a sibling directory (`context: ../tasks-web`) — clone both repos as siblings on disk for this to resolve. See the [frontend README](your-frontend-repo-url) for details on that build.
+- The `web` service builds from a sibling directory (`context: ../tasks-web`) — clone both repos as siblings on disk for this to resolve. See the [frontend README](https://github.com/D-Amores/tasks-web) for details on that build.
 - **Networking quirk worth knowing**: the `api` container shares the `mcp` container's network namespace (`network_mode: "service:mcp"`) so it can reach the MCP server at `localhost:8001` — which satisfies MCP's built-in DNS-rebinding protection (it only trusts `localhost`/`127.0.0.1` by default). The cleaner alternative — configuring `fastmcp`'s allowed-hosts directly — hit breaking API changes between versions during development; this is the pragmatic workaround, documented here rather than hidden.
 
 ## Running the AI layer
